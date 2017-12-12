@@ -1,0 +1,7 @@
+## logs and OS files
+.DS_Store
+.ipynb_checkpoints
+
+
+# images
+/imagery
