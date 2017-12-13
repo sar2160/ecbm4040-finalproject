@@ -83,7 +83,7 @@ class norm_layer(object):
 
 
 class fc_layer(object):
-    def __init__(self, input_x, in_size, out_size, rand_seed, activation_function=None, index=0):
+    def __init__(self, input_x, in_size, out_size, rand_seed, activation_function=None, index=0, dropout = None):
         """
         :param input_x: The input of the FC layer. It should be a flatten vector.
         :param in_size: The length of input vector.
@@ -110,7 +110,10 @@ class fc_layer(object):
             cell_out = tf.add(tf.matmul(input_x, weight), bias)
             if activation_function is not None:
                 cell_out = activation_function(cell_out)
-
+            
+            if dropout is not None:
+                cell_out = tf.nn.dropout(cell_out, dropout)
+            
             self.cell_out = cell_out
 
             tf.summary.histogram('fc_layer/{}/kernel'.format(index), weight)

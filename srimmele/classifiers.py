@@ -93,22 +93,20 @@ def VGG16(input_x, input_y,
                           out_size=fc_units[0],
                           rand_seed=seed,
                           activation_function=tf.nn.relu,
-                          index=0)
+                          index=0, dropout = 0.5)
 
-    fc_layer_0_drop = tf.nn.dropout(fc_layer_0.output(), 0.5)
 
     
-    fc_layer_1 = fc_layer(input_x= fc_layer_0_drop,
+    fc_layer_1 = fc_layer(input_x= fc_layer_0.output(),
                           in_size=fc_units[0],
                           out_size=fc_units[1],
                           rand_seed=seed,
                           activation_function=tf.nn.relu,
-                          index=1)
+                          index=1, dropout = 0.5)
     
-    fc_layer_1_drop = tf.nn.dropout(fc_layer_1.output(), 0.5)
 
 
-    fc_layer_2 = fc_layer(input_x=fc_layer_1_drop,
+    fc_layer_2 = fc_layer(input_x=fc_layer_1.output(),
                           in_size=fc_units[1],
                           out_size=output_size,
                           rand_seed=seed,
@@ -140,7 +138,7 @@ def VGG16(input_x, input_y,
 
         tf.summary.scalar('VGG_16_Loss', loss)
 
-    return fc_layer_1.output(), loss
+    return fc_layer_2.output(), loss
 
 
 def cross_entropy(output, input_y):
@@ -247,7 +245,6 @@ def training(train_generator, validation_generator,
             for itr in range(iters):
                 iter_total += 1
 
-                print(iter_total)
 
                 #### Sub in image generator here
                 batch = next(train_generator)
@@ -256,7 +253,7 @@ def training(train_generator, validation_generator,
                 training_batch_y = batch[1]
 
                 _, cur_loss = sess.run([step, loss], feed_dict={xs: training_batch_x, ys: training_batch_y})
-                if iter_total % 20 == 0:
+                if iter_total % 10 == 0:
 
                     # do validation
                     batch = next(validation_generator)
@@ -280,6 +277,6 @@ def training(train_generator, validation_generator,
                     if valid_acc > best_acc:
                         print('Best validation accuracy! iteration:{} accuracy: {}%'.format(iter_total, valid_acc))
                         best_acc = valid_acc
-                        saver.save(sess, 'model/{}'.format(cur_model_name))
+                        #saver.save(sess, 'model/{}'.format(cur_model_name))
 
     print("Traning ends. The best valid accuracy is {}. Model named {}.".format(best_acc, cur_model_name))
