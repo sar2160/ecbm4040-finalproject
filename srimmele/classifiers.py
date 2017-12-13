@@ -37,6 +37,7 @@ class VGGBlockAssembler(object):
     def return_index(self):
         return len(self.layers)
 
+
 def VGG16(input_x, input_y,
     conv_feat_dict, conv_kernel_dict, fc_units,
     pooling_size_dict, channel_num= 3, output_size = 10,
@@ -107,6 +108,7 @@ def VGG16(input_x, input_y,
     conv_weights = [layer.weight for layer in layers if isinstance(layer, conv_layer)]
     fc_weights   = [fc_layer_0.weight, fc_layer_1.weight]
 
+
 # loss
 
     with tf.name_scope("loss"):
@@ -119,7 +121,7 @@ def VGG16(input_x, input_y,
             name='cross_entropy')
         loss = tf.add(cross_entropy_loss, l2_norm * l2_loss, name='loss')
 
-        tf.summary.scalar('VGG 16 Loss', loss)
+        tf.summary.scalar('VGG_16_Loss', loss)
 
     return fc_layer_1.output(), loss
 
@@ -143,13 +145,14 @@ def evaluate(output, input_y):
     with tf.name_scope('evaluate'):
         pred = tf.argmax(output, axis=1)
         error_num = tf.count_nonzero(pred - input_y, name='error_num')
-        tf.summary.scalar('LeNet_error_num', error_num)
+        tf.summary.scalar('VGG16_error_num', error_num)
     return error_num
 
 
 
 # training function for the VGG Model
-def training(conv_feat_dict,
+def training(train_generator, validation_generator,
+             conv_feat_dict,
              fc_units,
              conv_kernel_dict,
              pooling_size_dict,
@@ -157,6 +160,7 @@ def training(conv_feat_dict,
              l2_norm=0.01,
              seed=26,
              learning_rate=1e-2,
+             lr_decay = 2,
              epoch=20,
              batch_size=32,
              samples_per_epoch = 2000,
@@ -171,18 +175,6 @@ def training(conv_feat_dict,
     # print("seed={}".format(seed))
     # print("learning_rate={}".format(learning_rate))
 
-
-    ## Image generators
-
-    train_generator     = generator_from_file('data/train.csv', image_generator=None, balance=1, \
-                            batch_size = batch_size, seed=seed, new_img_shape= (224,224), \
-                            class_dict=None, shuffle=True, channels="RGB",
-                            downsample=False, crop=42, batch_type = 'training', one_hot = False)
-
-    validation_generator = generator_from_file('data/train.csv', image_generator=None, balance=1, \
-                        batch_size = 200, seed=seed, new_img_shape= (224,224), \
-                        class_dict=None, shuffle=True, channels="RGB",
-                        downsample=False, batch_type = 'validation', one_hot = False)
 
 
     # define the variables and parameter needed during training
@@ -231,9 +223,13 @@ def training(conv_feat_dict,
         for epc in range(epoch):
             print("epoch {} ".format(epc + 1))
 
+            if (epc > 0) and (epc % 10 == 0):
+                learning_rate /= lr_decay
+                print('New learning rate: ' + str(learning_rate))
+
             for itr in range(iters):
                 iter_total += 1
-                
+
 
 
                 #### Sub in image generator here
