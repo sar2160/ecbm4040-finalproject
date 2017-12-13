@@ -159,6 +159,7 @@ def training(conv_feat_dict,
              learning_rate=1e-2,
              epoch=20,
              batch_size=32,
+             samples_per_epoch = 2000,
              verbose=False,
              pre_trained_model=None):
     # print("VGG Net. Parameters: ")
@@ -202,8 +203,7 @@ def training(conv_feat_dict,
 
 
 
-    #iters = int(X_train.shape[0] / batch_size)
-    #print('number of batches for training: {}'.format(iters))
+    iters = samples_per_epoch // batch_size
 
     step = train_step(loss)
     eve = evaluate(output, ys)
@@ -231,7 +231,7 @@ def training(conv_feat_dict,
         for epc in range(epoch):
             print("epoch {} ".format(epc + 1))
 
-            for itr in range(200):
+            for itr in range(iters):
                 iter_total += 1
                 print(iter_total)
 
@@ -256,7 +256,7 @@ def training(conv_feat_dict,
                     if verbose:
                         print('{}/{} loss: {} validation accuracy : {}%'.format(
                             batch_size * (itr + 1),
-                            X_train.shape[0],
+                            samples_per_epoch,
                             cur_loss,
                             valid_acc))
 
