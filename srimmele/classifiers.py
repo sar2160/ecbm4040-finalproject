@@ -95,18 +95,34 @@ def VGG16(input_x, input_y,
                           activation_function=tf.nn.relu,
                           index=0)
 
-    fc_layer_1 = fc_layer(input_x=fc_layer_0.output(),
+    fc_layer_0_drop = tf.nn.dropout(fc_layer_0.output(), 0.5)
+
+    
+    fc_layer_1 = fc_layer(input_x= fc_layer_0_drop,
+                          in_size=fc_units[0],
+                          out_size=fc_units[1],
+                          rand_seed=seed,
+                          activation_function=tf.nn.relu,
+                          index=1)
+    
+    fc_layer_1_drop = tf.nn.dropout(fc_layer_1.output(), 0.5)
+
+
+    fc_layer_2 = fc_layer(input_x=fc_layer_1_drop,
                           in_size=fc_units[1],
                           out_size=output_size,
                           rand_seed=seed,
                           activation_function=None,
-                          index=1)
+                          index=2)
 
+    
+    
+    
     VGG_blocks = [Block_0, Block_1, Block_2, Block_3 , Block_4]
     layers     = [b.layers for b in VGG_blocks]
 
     conv_weights = [layer.weight for layer in layers if isinstance(layer, conv_layer)]
-    fc_weights   = [fc_layer_0.weight, fc_layer_1.weight]
+    fc_weights   = [fc_layer_0.weight, fc_layer_1.weight, fc_layer_2.weight]
 
 
 # loss
@@ -116,8 +132,9 @@ def VGG16(input_x, input_y,
         l2_loss += tf.reduce_sum([tf.norm(w, axis=[-2, -1]) for w in conv_weights])
 
         label = tf.one_hot(input_y, 10)
+        
         cross_entropy_loss = tf.reduce_mean(
-            tf.nn.softmax_cross_entropy_with_logits(labels=label, logits=fc_layer_1.output()),
+            tf.nn.softmax_cross_entropy_with_logits(labels=label, logits= fc_layer_2.output()),
             name='cross_entropy')
         loss = tf.add(cross_entropy_loss, l2_norm * l2_loss, name='loss')
 
@@ -230,7 +247,7 @@ def training(train_generator, validation_generator,
             for itr in range(iters):
                 iter_total += 1
 
-
+                print(iter_total)
 
                 #### Sub in image generator here
                 batch = next(train_generator)
