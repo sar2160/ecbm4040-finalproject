@@ -15,24 +15,26 @@ class VGGBlockAssembler(object):
         self.n_conv_layers = n_conv_layers
         self.layers = []
 
-        self.layers.append(conv_layer(input_x=input_x,
-                                  in_channel=input_x.shape[3],
-                                  out_channel=conv_featmap[0],
-                                  kernel_shape=conv_kernel_size[0],
-                                  rand_seed=seed, index = indexer + len(self.layers)))
+        with tf.name_scope("conv_block"):
+
+            self.layers.append(conv_layer(input_x=input_x,
+                                      in_channel=input_x.shape[3],
+                                      out_channel=conv_featmap[0],
+                                      kernel_shape=conv_kernel_size[0],
+                                      rand_seed=seed, index = indexer + len(self.layers)))
 
 
-        for l in range(n_conv_layers - 1):
-            self.layers.append( conv_layer(input_x= self.layers[l].output(),
-                                  in_channel=conv_featmap[l],
-                                  out_channel=conv_featmap[l+1],
-                                  kernel_shape=conv_kernel_size[l+1],
-                                  rand_seed=seed, index =  indexer + len(self.layers)))
+            for l in range(n_conv_layers - 1):
+                self.layers.append( conv_layer(input_x= self.layers[l].output(),
+                                      in_channel=conv_featmap[l],
+                                      out_channel=conv_featmap[l+1],
+                                      kernel_shape=conv_kernel_size[l+1],
+                                      rand_seed=seed, index =  indexer + len(self.layers)))
 
 
-        self.layers.append(max_pooling_layer(input_x= self.layers[-1].output(),
-                                                k_size=pooling_size[0],
-                                                padding="SAME"))
+            self.layers.append(max_pooling_layer(input_x= self.layers[-1].output(),
+                                                    k_size=pooling_size[0],
+                                                    padding="SAME"))
 
     def return_index(self):
         return len(self.layers)
@@ -96,14 +98,14 @@ def VGG16(input_x, input_y,
                           index=0, dropout = 0.5)
 
 
-    
+
     fc_layer_1 = fc_layer(input_x= fc_layer_0.output(),
                           in_size=fc_units[0],
                           out_size=fc_units[1],
                           rand_seed=seed,
                           activation_function=tf.nn.relu,
                           index=1, dropout = 0.5)
-    
+
 
 
     fc_layer_2 = fc_layer(input_x=fc_layer_1.output(),
@@ -113,9 +115,9 @@ def VGG16(input_x, input_y,
                           activation_function=None,
                           index=2)
 
-    
-    
-    
+
+
+
     VGG_blocks = [Block_0, Block_1, Block_2, Block_3 , Block_4]
     layers     = [b.layers for b in VGG_blocks]
 
@@ -130,7 +132,7 @@ def VGG16(input_x, input_y,
         l2_loss += tf.reduce_sum([tf.norm(w, axis=[-2, -1]) for w in conv_weights])
 
         label = tf.one_hot(input_y, 10)
-        
+
         cross_entropy_loss = tf.reduce_mean(
             tf.nn.softmax_cross_entropy_with_logits(labels=label, logits= fc_layer_2.output()),
             name='cross_entropy')
