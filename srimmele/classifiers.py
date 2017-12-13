@@ -15,7 +15,7 @@ class VGGBlockAssembler(object):
         self.n_conv_layers = n_conv_layers
         self.layers = []
 
-        self.layers.append( conv_layer(input_x=input_x,
+        self.layers.append(conv_layer(input_x=input_x,
                                   in_channel=input_x.shape[3],
                                   out_channel=conv_featmap[0],
                                   kernel_shape=conv_kernel_size[0],
@@ -233,6 +233,7 @@ def training(conv_feat_dict,
 
             for itr in range(200):
                 iter_total += 1
+                print(iter_total)
 
 
                 #### Sub in image generator here

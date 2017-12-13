@@ -2,6 +2,11 @@
 .DS_Store
 .ipynb_checkpoints
 
+# compiled python 
+*.pyc
+
+#TF logs
+/logs
 
 # images
 /imagery
