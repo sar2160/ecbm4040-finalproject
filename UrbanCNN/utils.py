@@ -130,6 +130,7 @@ def generator_from_df(df, image_generator=None, balance=None, \
     # Filter for train or val
     if batch_type is not None:
         df = df[df.phase == batch_type]
+        print(str(df.shape[0]) + ' total records')
 
     ok = True
     while ok:
@@ -169,6 +170,7 @@ def generator_from_df(df, image_generator=None, balance=None, \
                 break
         else:
             X_batch, y_batch = X, yoh
+            
         yield (X_batch, y_batch)
 
 
@@ -188,5 +190,5 @@ def generator_from_file(filename, image_generator=None, balance=None, \
                              class_dict=class_dict,
                              shuffle=shuffle,
                              channels=channels,
-                             batch_type = 'training',
+                             batch_type = batch_type,
                              one_hot = one_hot)

@@ -239,9 +239,6 @@ def training(train_generator, validation_generator,
                 training_batch_y = batch[1]
 
                 _, cur_loss = sess.run([step, loss], feed_dict={xs: training_batch_x, ys: training_batch_y})
-                if iter_total % 5 == 0:
-                    print('Iteration: '); print(iter_total)
-
                 if iter_total % 20 == 0:
 
                     # do validation
