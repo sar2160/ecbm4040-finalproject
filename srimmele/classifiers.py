@@ -134,7 +134,7 @@ def cross_entropy(output, input_y):
 
 def train_step(loss, learning_rate=1e-3):
     with tf.name_scope('train_step'):
-        step = tf.train.GradientDescentOptimizer(learning_rate).minimize(loss)
+        step = tf.train.AdadeltaOptimizer(learning_rate).minimize(loss)
 
     return step
 
@@ -180,9 +180,9 @@ def training(conv_feat_dict,
                             downsample=False, crop=42, batch_type = 'training', one_hot = False)
 
     validation_generator = generator_from_file('data/train.csv', image_generator=None, balance=1, \
-                        batch_size = batch_size, seed=seed, new_img_shape= (224,224), \
+                        batch_size = 200, seed=seed, new_img_shape= (224,224), \
                         class_dict=None, shuffle=True, channels="RGB",
-                        downsample=False, crop=42, batch_type = 'validation', one_hot = False)
+                        downsample=False, batch_type = 'validation', one_hot = False)
 
 
     # define the variables and parameter needed during training
@@ -233,7 +233,7 @@ def training(conv_feat_dict,
 
             for itr in range(iters):
                 iter_total += 1
-                print(iter_total)
+                
 
 
                 #### Sub in image generator here
@@ -243,8 +243,11 @@ def training(conv_feat_dict,
                 training_batch_y = batch[1]
 
                 _, cur_loss = sess.run([step, loss], feed_dict={xs: training_batch_x, ys: training_batch_y})
+                if iter_total % 5 == 0:
+                    print('Iteration: '); print(iter_total)
 
-                if iter_total % 100 == 0:
+                if iter_total % 20 == 0:
+
                     # do validation
                     batch = next(validation_generator)
 

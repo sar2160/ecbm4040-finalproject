@@ -16,7 +16,6 @@ class conv_layer(object):
         :param rand_seed: An integer that presents the random seed used to generate the initial parameter value.
         :param index: The index of the layer. It is used for naming only.
         """
-        print(input_x.shape[3])
         assert len(input_x.shape) == 4 and input_x.shape[1] == input_x.shape[2] and input_x.shape[3] == in_channel
 
         with tf.variable_scope('conv_layer_%d' % index):
