@@ -12,19 +12,19 @@ class VGGBlockAssembler(object):
                 pooling_size, channel_num = 3, seed = 26, indexer = 0):
 
         assert len(conv_featmap) == len(conv_kernel_size) and len(conv_featmap) == len(pooling_size)
+        
         self.n_conv_layers = n_conv_layers
         self.layers = []
 
-        with tf.name_scope("conv_block"):
 
-            self.layers.append(conv_layer(input_x=input_x,
+        self.layers.append(conv_layer(input_x=input_x,
                                       in_channel=input_x.shape[3],
                                       out_channel=conv_featmap[0],
                                       kernel_shape=conv_kernel_size[0],
                                       rand_seed=seed, index = indexer + len(self.layers)))
 
 
-            for l in range(n_conv_layers - 1):
+        for l in range(n_conv_layers - 1):
                 self.layers.append( conv_layer(input_x= self.layers[l].output(),
                                       in_channel=conv_featmap[l],
                                       out_channel=conv_featmap[l+1],
@@ -32,7 +32,7 @@ class VGGBlockAssembler(object):
                                       rand_seed=seed, index =  indexer + len(self.layers)))
 
 
-            self.layers.append(max_pooling_layer(input_x= self.layers[-1].output(),
+        self.layers.append(max_pooling_layer(input_x= self.layers[-1].output(),
                                                     k_size=pooling_size[0],
                                                     padding="SAME"))
 
@@ -50,14 +50,14 @@ def VGG16(input_x, input_y,
 
     Block_0 = VGGBlockAssembler(input_x = input_x, n_conv_layers = 2,
                                 conv_featmap = conv_feat_dict[0], conv_kernel_size = conv_kernel_dict[0],
-                                pooling_size = pooling_size_dict[0], seed = 26 , indexer = indexer)
+                                pooling_size = pooling_size_dict[0], seed = seed , indexer = indexer)
     indexer += Block_0.return_index()
 
     ### Block 1
 
     Block_1 = VGGBlockAssembler(input_x = Block_0.layers[-1].output() , n_conv_layers = 2,
                                 conv_featmap = conv_feat_dict[1], conv_kernel_size = conv_kernel_dict[1],
-                                pooling_size = pooling_size_dict[1], seed = 26, indexer = indexer)
+                                pooling_size = pooling_size_dict[1], seed = seed, indexer = indexer)
 
     indexer += Block_1.return_index()
 
@@ -66,7 +66,7 @@ def VGG16(input_x, input_y,
 
     Block_2 = VGGBlockAssembler(input_x = Block_1.layers[-1].output() , n_conv_layers = 3,
                                 conv_featmap = conv_feat_dict[2], conv_kernel_size = conv_kernel_dict[2],
-                                pooling_size = pooling_size_dict[2], seed = 26, indexer = indexer)
+                                pooling_size = pooling_size_dict[2], seed = seed, indexer = indexer)
 
     indexer += Block_2.return_index()
 
@@ -74,7 +74,7 @@ def VGG16(input_x, input_y,
 
     Block_3 = VGGBlockAssembler(input_x = Block_2.layers[-1].output() , n_conv_layers = 3,
                                 conv_featmap = conv_feat_dict[3], conv_kernel_size = conv_kernel_dict[3],
-                                pooling_size = pooling_size_dict[3], seed = 26,  indexer = indexer)
+                                pooling_size = pooling_size_dict[3], seed = seed,  indexer = indexer)
 
     indexer += Block_3.return_index()
 
@@ -82,7 +82,7 @@ def VGG16(input_x, input_y,
 
     Block_4 = VGGBlockAssembler(input_x = Block_3.layers[-1].output() , n_conv_layers = 3,
                                 conv_featmap = conv_feat_dict[4], conv_kernel_size = conv_kernel_dict[4],
-                                pooling_size = pooling_size_dict[4], seed = 26,  indexer = indexer)
+                                pooling_size = pooling_size_dict[4], seed = seed,  indexer = indexer)
 
     # flatten
     pool_shape = Block_4.layers[-1].output().get_shape()
@@ -119,12 +119,13 @@ def VGG16(input_x, input_y,
 
 
     VGG_blocks = [Block_0, Block_1, Block_2, Block_3 , Block_4]
-    layers     = [b.layers for b in VGG_blocks]
-
-    conv_weights = [layer.weight for layer in layers if isinstance(layer, conv_layer)]
+    conv_weights = []
+    for block in VGG_blocks:
+        conv_weights.append(([b.weight for b in block.layers if isinstance(b, conv_layer)]))
+        
+       
+    conv_weights = [y for x in conv_weights for y in x]
     fc_weights   = [fc_layer_0.weight, fc_layer_1.weight, fc_layer_2.weight]
-
-
 # loss
 
     with tf.name_scope("loss"):
@@ -153,7 +154,7 @@ def cross_entropy(output, input_y):
 
 def train_step(loss, learning_rate=1e-3):
     with tf.name_scope('train_step'):
-        step = tf.train.AdadeltaOptimizer(learning_rate).minimize(loss)
+        step = tf.train.AdamOptimizer(learning_rate).minimize(loss)
 
     return step
 
@@ -258,7 +259,7 @@ def training(train_generator, validation_generator,
                 if iter_total % 10 == 0:
 
                     # do validation
-                    batch = next(validation_generator)
+                    batch = next(train_generator)
 
                     X_val = batch[0]
                     y_val = batch[1]
