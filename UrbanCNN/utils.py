@@ -75,10 +75,9 @@ def load_and_preprocess(filename, new_shape=None, channels="RGB",
     if img.max()<=1.0:
         img = img * 255.0 / img.max()
     if crop is not None:
-        crop = int(crop)
         i = np.random.randint(crop//2, img.shape[0]-crop//2)
         j = np.random.randint(crop//2, img.shape[1]-crop//2)
-        img = img[(i-crop/2):(i+crop//2),(j-crop//2):(j+crop//2)]
+        img = img[(i-crop//2):(i+crop//2),(j-crop//2):(j+crop//2)]
     if new_shape is not None:
         img = resize(img, new_shape, preserve_range=True)
     # imagenet_mean_bgr = np.array([103.939, 116.779, 123.68])

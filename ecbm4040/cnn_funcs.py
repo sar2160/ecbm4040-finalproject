@@ -22,13 +22,13 @@ class conv_layer(object):
             with tf.name_scope('conv_kernel'):
                 w_shape = [kernel_shape, kernel_shape, in_channel, out_channel]
                 weight = tf.get_variable(name='conv_kernel_%d' % index, shape=w_shape,
-                                         initializer=tf.contrib.layers.xavier_initializer())
+                                         initializer=tf.glorot_uniform_initializer(seed = rand_seed))
                 self.weight = weight
 
             with tf.variable_scope('conv_bias'):
                 b_shape = [out_channel]
                 bias = tf.get_variable(name='conv_bias_%d' % index, shape=b_shape,
-                                       initializer=tf.contrib.layers.xavier_initializer())
+                                       initializer=tf.zeros_initializer())
                 self.bias = bias
 
             # strides [1, x_movement, y_movement, 1]
@@ -98,13 +98,13 @@ class fc_layer(object):
             with tf.name_scope('fc_kernel'):
                 w_shape = [in_size, out_size]
                 weight = tf.get_variable(name='fc_kernel_%d' % index, shape=w_shape,
-                                         initializer=tf.contrib.layers.xavier_initializer())
+                                         initializer=tf.glorot_uniform_initializer(seed = rand_seed))
                 self.weight = weight
 
             with tf.variable_scope('fc_kernel'):
                 b_shape = [out_size]
                 bias = tf.get_variable(name='fc_bias_%d' % index, shape=b_shape,
-                                       initializer=tf.contrib.layers.xavier_initializer())
+                                       initializer=tf.zeros_initializer())
                 self.bias = bias
 
             cell_out = tf.add(tf.matmul(input_x, weight), bias)

@@ -161,11 +161,12 @@ def train_step(loss, learning_rate=1e-3):
 
 def evaluate(output, input_y):
     with tf.name_scope('evaluate'):
-        pred = tf.argmax(output, axis=1)
+        pred      = tf.argmax(output, axis=1)
         error_num = tf.count_nonzero(pred - input_y, name='error_num')
         tf.summary.scalar('VGG16_error_num', error_num)
+        #accuracy  = tf.metrics.accuracy(input_y, pred, name = 'accuracy')
+        #tf.summary.scalar('VGG16_accuracy', accuracy)
     return error_num
-
 
 
 # training function for the VGG Model
@@ -216,7 +217,7 @@ def training(train_generator, validation_generator,
     iters = samples_per_epoch // batch_size
 
     step = train_step(loss)
-    eve = evaluate(output, ys)
+    eve  = evaluate(output, ys)
 
     iter_total = 0
     best_acc = 0
@@ -234,8 +235,9 @@ def training(train_generator, validation_generator,
             try:
                 print("Load the model from: {}".format(pre_trained_model))
                 saver.restore(sess, 'model/{}'.format(pre_trained_model))
-            except Exception:
+            except Exception as e:
                 print("Load model Failed!")
+                print(e);
                 pass
 
         for epc in range(epoch):
@@ -265,7 +267,8 @@ def training(train_generator, validation_generator,
                     y_val = batch[1]
 
                     valid_eve, merge_result = sess.run([eve, merge], feed_dict={xs: X_val, ys: y_val})
-                    valid_acc = 100 - valid_eve * 100 / y_val.shape[0]
+                    valid_acc =  100 - ((valid_eve * 100) / y_val.shape[0])
+                    
                     if verbose:
                         print('{}/{} loss: {} validation accuracy : {}%'.format(
                             batch_size * (itr + 1),
@@ -280,6 +283,6 @@ def training(train_generator, validation_generator,
                     if valid_acc > best_acc:
                         print('Best validation accuracy! iteration:{} accuracy: {}%'.format(iter_total, valid_acc))
                         best_acc = valid_acc
-                        #saver.save(sess, 'model/{}'.format(cur_model_name))
+                        saver.save(sess, 'model/{}'.format(cur_model_name))
 
     print("Traning ends. The best valid accuracy is {}. Model named {}.".format(best_acc, cur_model_name))
