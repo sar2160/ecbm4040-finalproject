@@ -110,10 +110,10 @@ class fc_layer(object):
             cell_out = tf.add(tf.matmul(input_x, weight), bias)
             if activation_function is not None:
                 cell_out = activation_function(cell_out)
-            
+
             if dropout is not None:
                 cell_out = tf.nn.dropout(cell_out, dropout)
-            
+
             self.cell_out = cell_out
 
             tf.summary.histogram('fc_layer/{}/kernel'.format(index), weight)
