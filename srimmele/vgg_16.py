@@ -6,7 +6,7 @@ import numpy as np
 import time
 
 
-def VGG16_Too(input_x:
+def VGG16_Too(input_x, input_y, l2_norm=0, seed = 26, output_size=10):
 
     assert len(conv_featmap) == len(conv_kernel_size) and len(conv_featmap) == len(pooling_size)
 
