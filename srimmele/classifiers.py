@@ -12,7 +12,7 @@ class VGGBlockAssembler(object):
                 pooling_size, channel_num = 3, seed = 26, indexer = 0):
 
         assert len(conv_featmap) == len(conv_kernel_size) and len(conv_featmap) == len(pooling_size)
-        
+
         self.n_conv_layers = n_conv_layers
         self.layers = []
 
@@ -122,8 +122,8 @@ def VGG16(input_x, input_y,
     conv_weights = []
     for block in VGG_blocks:
         conv_weights.append(([b.weight for b in block.layers if isinstance(b, conv_layer)]))
-        
-       
+
+
     conv_weights = [y for x in conv_weights for y in x]
     fc_weights   = [fc_layer_0.weight, fc_layer_1.weight, fc_layer_2.weight]
 # loss
@@ -164,10 +164,14 @@ def evaluate(output, input_y):
         pred      = tf.argmax(output, axis=1)
         error_num = tf.count_nonzero(pred - input_y, name='error_num')
         tf.summary.scalar('VGG16_error_num', error_num)
-        #accuracy  = tf.metrics.accuracy(input_y, pred, name = 'accuracy')
-        #tf.summary.scalar('VGG16_accuracy', accuracy)
     return error_num
 
+def accuracy(output, input_y):
+    with tf.name_scope('accuracy'):
+        pred      = tf.argmax(output, axis=1)
+        accuracy  = tf.metrics.accuracy(input_y, pred, name = 'validation_accuracy')
+        tf.summary.scalar('VGG16_val_accuracy', accuracy)
+    return accuracy
 
 # training function for the VGG Model
 def training(train_generator, validation_generator,
@@ -216,8 +220,9 @@ def training(train_generator, validation_generator,
 
     iters = samples_per_epoch // batch_size
 
-    step = train_step(loss)
+    step = train_step(loss, learning_rate = learning_rate)
     eve  = evaluate(output, ys)
+    acc  = accuracy(output,ys)
 
     iter_total = 0
     best_acc = 0
@@ -266,9 +271,9 @@ def training(train_generator, validation_generator,
                     X_val = batch[0]
                     y_val = batch[1]
 
-                    valid_eve, merge_result = sess.run([eve, merge], feed_dict={xs: X_val, ys: y_val})
+                    _, valid_eve, merge_result = sess.run([acc, eve, merge], feed_dict={xs: X_val, ys: y_val})
                     valid_acc =  100 - ((valid_eve * 100) / y_val.shape[0])
-                    
+
                     if verbose:
                         print('{}/{} loss: {} validation accuracy : {}%'.format(
                             batch_size * (itr + 1),
