@@ -152,9 +152,10 @@ def cross_entropy(output, input_y):
     return ce
 
 
-def train_step(loss, learning_rate=1e-3):
+def train_step(loss, learning_rate):
+    
     with tf.name_scope('train_step'):
-        step = tf.train.AdamOptimizer(learning_rate).minimize(loss)
+        step = tf.train.AdadeltaOptimizer(learning_rate).minimize(loss)
 
     return step
 
@@ -167,9 +168,9 @@ def evaluate(output, input_y):
     return error_num
 
 def accuracy(output, input_y):
-    with tf.name_scope('accuracy'):
+    with tf.name_scope('evaluate'):
         pred      = tf.argmax(output, axis=1)
-        accuracy  = tf.metrics.accuracy(input_y, pred, name = 'validation_accuracy')
+        accuracy  = tf.metrics.accuracy(input_y, pred, name = 'accuracy')
         tf.summary.scalar('VGG16_val_accuracy', accuracy)
     return accuracy
 
@@ -222,7 +223,7 @@ def training(train_generator, validation_generator,
 
     step = train_step(loss, learning_rate = learning_rate)
     eve  = evaluate(output, ys)
-    acc  = accuracy(output,ys)
+    #acc  = accuracy(output,ys)
 
     iter_total = 0
     best_acc = 0
@@ -230,10 +231,10 @@ def training(train_generator, validation_generator,
 
     with tf.Session() as sess:
         merge = tf.summary.merge_all()
-
         writer = tf.summary.FileWriter("log/{}".format(cur_model_name), sess.graph)
         saver = tf.train.Saver()
         sess.run(tf.global_variables_initializer())
+                 
 
         # try to restore the pre_trained
         if pre_trained_model is not None:
@@ -266,12 +267,12 @@ def training(train_generator, validation_generator,
                 if iter_total % 10 == 0:
 
                     # do validation
-                    batch = next(train_generator)
+                    batch = next(validation_generator)
 
                     X_val = batch[0]
                     y_val = batch[1]
 
-                    _, valid_eve, merge_result = sess.run([acc, eve, merge], feed_dict={xs: X_val, ys: y_val})
+                    valid_eve, merge_result = sess.run([eve, merge], feed_dict={xs: X_val, ys: y_val})
                     valid_acc =  100 - ((valid_eve * 100) / y_val.shape[0])
 
                     if verbose:

@@ -6,7 +6,7 @@
 *.pyc
 
 #TF logs
-/logs
+/log
 
 # images
 /imagery
