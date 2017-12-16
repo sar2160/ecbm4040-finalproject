@@ -1,5 +1,5 @@
 
-from ecbm4040.cnn_funcs import conv_layer, max_pooling_layer, fc_layer
+from ecbm4040.cnn_funcs_imagenet import conv_layer, max_pooling_layer, fc_layer
 from UrbanCNN.utils import generator_from_file
 import tensorflow as tf
 import numpy as np
@@ -14,7 +14,7 @@ class VGGBlockAssembler(object):
 
     def __init__(self, input_x, n_conv_layers,
                 conv_featmap, conv_kernel_size,
-                pooling_size, channel_num = 3, seed = 26, indexer = 0):
+                pooling_size, channel_num = 3, seed = 26, indexer = 0, trainable = True):
 
         assert len(conv_featmap) == len(conv_kernel_size) and len(conv_featmap) == len(pooling_size)
 
@@ -26,7 +26,7 @@ class VGGBlockAssembler(object):
                                       in_channel=input_x.shape[3],
                                       out_channel=conv_featmap[0],
                                       kernel_shape=conv_kernel_size[0],
-                                      rand_seed=seed, index = indexer + len(self.layers)))
+                                      rand_seed=seed, index = indexer + len(self.layers), trainable = trainable))
 
 
         for l in range(n_conv_layers - 1):
@@ -34,7 +34,7 @@ class VGGBlockAssembler(object):
                                       in_channel=conv_featmap[l],
                                       out_channel=conv_featmap[l+1],
                                       kernel_shape=conv_kernel_size[l+1],
-                                      rand_seed=seed, index =  indexer + len(self.layers)))
+                                      rand_seed=seed, index =  indexer + len(self.layers), trainable = trainable))
 
 
         self.layers.append(max_pooling_layer(input_x= self.layers[-1].output(),
@@ -48,21 +48,21 @@ class VGGBlockAssembler(object):
 def VGG16(input_x, input_y,
     conv_feat_dict, conv_kernel_dict, fc_units,
     pooling_size_dict, channel_num= 3, output_size = 10,
-    l2_norm=0.01, seed = 26):
+    l2_norm=0.01, seed = 26, keep_prob = 1.0):
 
     ## Block 0
     indexer = 0
 
     Block_0 = VGGBlockAssembler(input_x = input_x, n_conv_layers = 2,
                                 conv_featmap = conv_feat_dict[0], conv_kernel_size = conv_kernel_dict[0],
-                                pooling_size = pooling_size_dict[0], seed = seed , indexer = indexer)
+                                pooling_size = pooling_size_dict[0], seed = seed , indexer = indexer, trainable = True)
     indexer += Block_0.return_index()
 
     ### Block 1
 
     Block_1 = VGGBlockAssembler(input_x = Block_0.layers[-1].output() , n_conv_layers = 2,
                                 conv_featmap = conv_feat_dict[1], conv_kernel_size = conv_kernel_dict[1],
-                                pooling_size = pooling_size_dict[1], seed = seed, indexer = indexer)
+                                pooling_size = pooling_size_dict[1], seed = seed, indexer = indexer, trainable = True)
 
     indexer += Block_1.return_index()
 
@@ -71,7 +71,7 @@ def VGG16(input_x, input_y,
 
     Block_2 = VGGBlockAssembler(input_x = Block_1.layers[-1].output() , n_conv_layers = 3,
                                 conv_featmap = conv_feat_dict[2], conv_kernel_size = conv_kernel_dict[2],
-                                pooling_size = pooling_size_dict[2], seed = seed, indexer = indexer)
+                                pooling_size = pooling_size_dict[2], seed = seed, indexer = indexer, trainable = True)
 
     indexer += Block_2.return_index()
 
@@ -100,7 +100,7 @@ def VGG16(input_x, input_y,
                           out_size=fc_units[0],
                           rand_seed=seed,
                           activation_function=tf.nn.relu,
-                          index=0, dropout = 0.5)
+                          index=0, dropout = keep_prob)
 
 
 
@@ -109,7 +109,7 @@ def VGG16(input_x, input_y,
                           out_size=fc_units[1],
                           rand_seed=seed,
                           activation_function=tf.nn.relu,
-                          index=1, dropout = 0.5)
+                          index=1, dropout = keep_prob)
 
 
 
@@ -168,7 +168,8 @@ def train_step(loss, learning_rate):
     return step
 
 
-def evaluate(output, input_y):
+def evaluate(output, input_y,keep_prob):
+    print(keep_prob)
     with tf.name_scope('evaluate'):
         pred      = tf.argmax(output, axis=1)
         error_num = tf.count_nonzero(pred - input_y, name='error_num')
@@ -213,6 +214,7 @@ def training(train_generator, validation_generator,
     with tf.name_scope('inputs'):
         xs = tf.placeholder(shape=[None, img_size, img_size, 3], dtype=tf.float32)
         ys = tf.placeholder(shape=[None, ], dtype=tf.int64)
+        keep_prob = tf.placeholder(tf.float32)
 
     output, loss  = VGG16(input_x =  xs, input_y =  ys,
                          channel_num=3,
@@ -222,21 +224,27 @@ def training(train_generator, validation_generator,
                          conv_kernel_dict=conv_kernel_dict,
                          pooling_size_dict=pooling_size_dict,
                          l2_norm=l2_norm,
-                         seed=seed)
+                         seed=seed,
+                         keep_prob = keep_prob)
 
 
 
     iters = samples_per_epoch // batch_size
 
     step = train_step(loss, learning_rate = learning_rate)
-    eve  = evaluate(output, ys)
+    eve  = evaluate(output, ys, keep_prob)
     #acc  = accuracy(output,ys)
 
     iter_total = 0
     best_acc = 0
     cur_model_name = 'VGG16_{}'.format(int(time.time()))
 
-    with tf.Session() as sess:
+    
+    ## Allocate memory as needed
+    config = tf.ConfigProto()
+    config.gpu_options.allow_growth = True
+    
+    with tf.Session(config = config) as sess:
         merge = tf.summary.merge_all()
         writer = tf.summary.FileWriter("log/{}".format(cur_model_name), sess.graph)
         saver = tf.train.Saver()
@@ -248,16 +256,9 @@ def training(train_generator, validation_generator,
         for k in my_weights.keys():
                  split = k.split('/')
                  for i in tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope=split[0]+'/'):
-                     if i.name == k + ":0":
-                          i.assign(weights[my_weights[k]])
-                          print('assigned :' + k)
-
-
-        #         with tf.get_variable_scope(split[0]):
-        #             sess.run(tf.assign(tf.get_variable(split[1]) ,weights[k]\
-        #              ,trainable = True, validate_shape = True))
-
-
+                    if i.name == k + ":0":
+                        sess.run(i.assign(weights[my_weights[k]]))
+                        print('assigned :' + k)
 
 
         # try to restore the pre_trained
@@ -287,7 +288,7 @@ def training(train_generator, validation_generator,
                 training_batch_x = batch[0]
                 training_batch_y = batch[1]
 
-                _, cur_loss = sess.run([step, loss], feed_dict={xs: training_batch_x, ys: training_batch_y})
+                _, cur_loss = sess.run([step, loss], feed_dict={xs: training_batch_x, ys: training_batch_y, keep_prob: 0.5})
                 if iter_total % 10 == 0:
 
                     # do validation
@@ -296,7 +297,7 @@ def training(train_generator, validation_generator,
                     X_val = batch[0]
                     y_val = batch[1]
 
-                    valid_eve, merge_result = sess.run([eve, merge], feed_dict={xs: X_val, ys: y_val})
+                    valid_eve, merge_result = sess.run([eve, merge], feed_dict={xs: X_val, ys: y_val, keep_prob :1.0})
                     valid_acc =  100 - ((valid_eve * 100) / y_val.shape[0])
 
                     if verbose:
