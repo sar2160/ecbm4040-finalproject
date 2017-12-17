@@ -1,3 +1,12 @@
+"""
+These are helper functions for loading and processing images prior to
+training. They are necessary to recreate the dataset used in the reference
+paper. They have been minimally modified from source where necessary
+to ensure functionality.
+"""
+### Attribution: https://github.com/adrianalbert/urban-environments
+
+
 from __future__ import print_function
 
 import numpy as np
@@ -9,56 +18,6 @@ from skimage.io import imread
 from skimage.transform import resize, pyramid_reduce
 
 from collections import Counter
-
-
-def load_weights_into_model(model, weights_file, \
-    layers_to_skip=None, transpose_conv=False):
-    '''
-    Loads pretrained weights from weights_file in to the structure defined by model. Has simple checks to ensure that weights from file are being loaded to the corresponding layers in the model.
-
-    layers_to_skip is a list of either layer indices (ints) or names (strings).
-    '''
-    f = h5py.File(weights_file, "r")
-    if not layers_to_skip:
-        layers_to_skip = []
-
-    N_layers_file = f.attrs['nb_layers'] if 'nb_layers' in f.attrs.keys()\
-                        else len(f.attrs['layer_names'])
-    N_layers_model= len(model.layers)
-    layers_to_load = [l.name for k,l in enumerate(model.layers) \
-                            if len(l.get_weights())>0 and l.name not in layers_to_skip and k not in layers_to_skip]
-
-    print("Loading %d layers from file into model..."%len(layers_to_load))
-
-    l_file = 0
-    for l_model in layers_to_load:
-        # go to next layer in file that has weights to load
-        while True:
-            g = f['layer_{}'.format(l_file)]
-            weights=[g['param_{}'.format(p)] \
-                        for p in range(g.attrs['nb_params'])]
-            l_file += 1
-            if len(weights)>0:
-                break
-        print(model.get_layer(l_model).name)
-        # transpose convolutional layers saved with a different backend
-        layer = model.get_layer(l_model)
-        k = [k for k,l in enumerate(model.layers) if l.name==l_model][0]
-        if layer.__class__.__name__ in ['Conv2D', 'Convolution2D'] and transpose_conv:
-            kernel, bias = weights
-            if kernel.ndim > 2:
-                kernel = np.transpose(kernel, (2, 3, 1, 0))
-            else:
-                print('reshaping ...')
-                kernel = np.reshape(kernel, layer.get_weights()[0].shape)
-                print(kernel.shape)
-            model.layers[k].set_weights([kernel, bias])
-        else:
-            model.layers[k].set_weights(weights)
-    print("done.")
-    f.close()
-
-    return model
 
 
 def load_and_preprocess(filename, new_shape=None, channels="RGB",
@@ -170,7 +129,7 @@ def generator_from_df(df, image_generator=None, balance=None, \
                 break
         else:
             X_batch, y_batch = X, yoh
-            
+
         yield (X_batch, y_batch)
 
 
