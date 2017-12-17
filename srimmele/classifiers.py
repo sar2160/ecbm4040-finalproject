@@ -42,7 +42,7 @@ class VGGBlockAssembler(object):
 
 def VGG16(input_x, input_y,
     conv_feat_dict, conv_kernel_dict, fc_units,
-    pooling_size_dict, channel_num= 3, output_size = 10,
+    pooling_size_dict, channel_num= 3, output_size = 10, dropout_keep = 1.0,
     l2_norm=0.01, seed = 26):
 
     ## Block 0
@@ -95,7 +95,7 @@ def VGG16(input_x, input_y,
                           out_size=fc_units[0],
                           rand_seed=seed,
                           activation_function=tf.nn.relu,
-                          index=0, dropout = 0.5)
+                          index=0, dropout = dropout_keep)
 
 
 
@@ -104,7 +104,7 @@ def VGG16(input_x, input_y,
                           out_size=fc_units[1],
                           rand_seed=seed,
                           activation_function=tf.nn.relu,
-                          index=1, dropout = 0.5)
+                          index=1, dropout = dropout_keep)
 
 
 
@@ -147,7 +147,7 @@ def VGG16(input_x, input_y,
 def cross_entropy(output, input_y):
     with tf.name_scope('cross_entropy'):
         label = tf.one_hot(input_y, 10)
-        ce = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(labels=label, logits=output))
+        ce = tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(labels=label, logits=output))
 
     return ce
 
@@ -168,9 +168,9 @@ def evaluate(output, input_y):
     return error_num
 
 def accuracy(output, input_y):
-    with tf.name_scope('evaluate'):
+    with tf.name_scope('accuracy'):
         pred      = tf.argmax(output, axis=1)
-        accuracy  = tf.metrics.accuracy(input_y, pred, name = 'accuracy')
+        accuracy  = tf.reduce_mean(tf.cast(tf.equal(pred ,input_y), tf.float32))
         tf.summary.scalar('VGG16_val_accuracy', accuracy)
     return accuracy
 
@@ -185,19 +185,13 @@ def training(train_generator, validation_generator,
              seed=26,
              learning_rate=1e-2,
              lr_decay = 2,
+             dropout_keep = 1.0,
              epoch=20,
              batch_size=32,
              samples_per_epoch = 2000,
              verbose=False,
-             pre_trained_model=None):
-    # print("VGG Net. Parameters: ")
-    # print("conv_featmap={}".format(conv_featmap))
-    # print("fc_units={}".format(fc_units))
-    # print("conv_kernel_size={}".format(conv_kernel_size))
-    # print("pooling_size={}".format(pooling_size))
-    # print("l2_norm={}".format(l2_norm))
-    # print("seed={}".format(seed))
-    # print("learning_rate={}".format(learning_rate))
+             pre_trained_model=None,
+             model_name = 'VGG16'):
 
 
 
@@ -205,6 +199,7 @@ def training(train_generator, validation_generator,
     with tf.name_scope('inputs'):
         xs = tf.placeholder(shape=[None, img_size, img_size, 3], dtype=tf.float32)
         ys = tf.placeholder(shape=[None, ], dtype=tf.int64)
+        keep_prob = tf.placeholder(tf.float32)
 
     output, loss = VGG16(input_x =  xs, input_y =  ys,
                          channel_num=3,
@@ -213,6 +208,7 @@ def training(train_generator, validation_generator,
                          fc_units=fc_units,
                          conv_kernel_dict=conv_kernel_dict,
                          pooling_size_dict=pooling_size_dict,
+                         dropout_keep = dropout_keep,
                          l2_norm=l2_norm,
                          seed=seed)
 
@@ -222,18 +218,20 @@ def training(train_generator, validation_generator,
     iters = samples_per_epoch // batch_size
 
     step = train_step(loss, learning_rate = learning_rate)
-    eve  = evaluate(output, ys)
-    #acc  = accuracy(output,ys)
+    eve  = evaluate(output,ys)
+    acc  = accuracy(output,ys)
 
     iter_total = 0
     best_acc = 0
-    cur_model_name = 'VGG16_{}'.format(int(time.time()))
+    cur_model_name = model_name + '_{}'.format(int(time.time()))
 
     with tf.Session() as sess:
         merge = tf.summary.merge_all()
         writer = tf.summary.FileWriter("log/{}".format(cur_model_name), sess.graph)
         saver = tf.train.Saver()
         sess.run(tf.global_variables_initializer())
+        sess.run(tf.local_variables_initializer())
+
                  
 
         # try to restore the pre_trained
@@ -263,7 +261,7 @@ def training(train_generator, validation_generator,
                 training_batch_x = batch[0]
                 training_batch_y = batch[1]
 
-                _, cur_loss = sess.run([step, loss], feed_dict={xs: training_batch_x, ys: training_batch_y})
+                _, cur_loss = sess.run([step, loss], feed_dict={xs: training_batch_x, ys: training_batch_y, keep_prob: dropout_keep})
                 if iter_total % 10 == 0:
 
                     # do validation
@@ -271,12 +269,13 @@ def training(train_generator, validation_generator,
 
                     X_val = batch[0]
                     y_val = batch[1]
-
-                    valid_eve, merge_result = sess.run([eve, merge], feed_dict={xs: X_val, ys: y_val})
-                    valid_acc =  100 - ((valid_eve * 100) / y_val.shape[0])
-
+                    
+                    # no dropout on the evaluations
+                    valid_eve, valid_acc, merge_result = sess.run([eve, acc, merge], feed_dict={xs: X_val, ys: y_val, keep_prob: 1.0})
+                    
+                    
                     if verbose:
-                        print('{}/{} loss: {} validation accuracy : {}%'.format(
+                        print('{}/{} loss: {} validation accuracy : {}'.format(
                             batch_size * (itr + 1),
                             samples_per_epoch,
                             cur_loss,

@@ -71,7 +71,7 @@ def training(train_generator, validation_generator,
         xs = tf.placeholder(shape=[None, img_size, img_size, 3], dtype=tf.float32)
         ys = tf.placeholder(shape=[None, ], dtype=tf.int64)
 
-    output, loss = VGG16_Too(input_x, input_y, \
+    output, loss = VGG16_Too(xs, ys, \
                     l2_norm=0, seed = 26, output_size=10)
 
 
