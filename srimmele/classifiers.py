@@ -4,19 +4,20 @@ from UrbanCNN.utils import generator_from_file
 from srimmele.data_utils import get_Imagenet_keys
 
 import tensorflow as tf
+import numpy as np
 
 import time
 
 class VGGBlockAssembler(object):
- """
- Wrapper class for assembling a 'block' of 2 or 3 (or N) convolutional layers
- in the VGG architecture.
- """
-
+    '''
+     Wrapper class for assembling a 'block' of 2 or 3 (or N) convolutional layers
+     in the VGG architecture.
+    '''
 
     def __init__(self, input_x, n_conv_layers,
                 conv_featmap, conv_kernel_size,
-                pooling_size, channel_num = 3, seed = 26, indexer = 0, trainable = True):
+                pooling_size, channel_num = 3, 
+                seed = 26, indexer = 0, trainable = True):
 
         assert len(conv_featmap) == len(conv_kernel_size) and len(conv_featmap) == len(pooling_size)
 
@@ -55,9 +56,10 @@ def VGG16(input_x, input_y,
     conv_feat_dict, conv_kernel_dict, fc_units,
     pooling_size_dict, channel_num= 3, output_size = 10, dropout_keep = 1.0,
     l2_norm=0.01, seed = 26):
-    """
+    
+    '''
     A VGG16 Architecture implemented in Tensorflow.
-    """
+    '''
 
     ## Block 0
     indexer = 0
@@ -190,7 +192,7 @@ def accuracy(output, input_y):
     return accuracy
 
 def train_accuracy(output, input_y):
-    with tf.name_scope('accuracy'):
+    with tf.name_scope('train_accuracy'):
         pred      = tf.argmax(output, axis=1)
         accuracy  = tf.reduce_mean(tf.cast(tf.equal(pred ,input_y), tf.float32))
         tf.summary.scalar('VGG16_train_accuracy', accuracy)
@@ -251,7 +253,9 @@ def training(train_generator, validation_generator,
     best_acc = 0
     cur_model_name = model_name + '_{}'.format(int(time.time()))
 
-    with tf.Session() as sess:
+    config = tf.ConfigProto()
+    config.gpu_options.allocator_type = 'BFC'
+    with tf.Session(config = config) as sess:
         merge = tf.summary.merge_all()
         writer = tf.summary.FileWriter("log/{}".format(cur_model_name), sess.graph)
         saver = tf.train.Saver()
@@ -269,6 +273,7 @@ def training(train_generator, validation_generator,
                         if i.name == k + ":0":
                             sess.run(i.assign(weights[my_weights[k]]))
                             print('assigned ImageNet weights to: ' + k)
+            del weights
 
         # try to restore the pre_trained
         if pre_trained_model is not None:
@@ -292,23 +297,23 @@ def training(train_generator, validation_generator,
 
 
                 #### Sub in image generator here
-                batch = next(train_generator)
+                train_batch = next(train_generator)
 
-                training_batch_x = batch[0]
-                training_batch_y = batch[1]
+                training_batch_x = train_batch[0]
+                training_batch_y = train_batch[1]
 
-                _, cur_loss = sess.run([step, loss], feed_dict={xs: training_batch_x, ys: training_batch_y, keep_prob: dropout_keep})
+                _, cur_loss, tr_acc = sess.run([step, loss, train_acc], feed_dict={xs: training_batch_x, ys: training_batch_y, keep_prob: dropout_keep})
                 if iter_total % 10 == 0:
 
                     # do validation
-                    batch = next(validation_generator)
+                    val_batch = next(validation_generator)
 
-                    X_val = batch[0]
-                    y_val = batch[1]
+                    X_val = val_batch[0]
+                    y_val = val_batch[1]
 
                     # no dropout on the evaluations
                     valid_eve, valid_acc, merge_result = sess.run([eve, acc, merge], feed_dict={xs: X_val, ys: y_val, keep_prob: 1.0})
-                    test_acc = sess.run([train_acc], feed_dict={xs: training_batch_x, ys: training_batch_y, keep_prob: 1.0})
+             
 
 
                     if verbose:

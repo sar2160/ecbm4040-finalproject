@@ -20,9 +20,7 @@ class conv_layer(object):
         with tf.variable_scope('conv_layer_%d' % index):
             with tf.name_scope('conv_kernel'):
                 w_shape = [kernel_shape, kernel_shape, in_channel, out_channel]
-                weight = tf.get_variable(name='conv_kernel_%d' % index, shape=w_shape,
-                                         initializer=tf.glorot_uniform_initializer(seed = rand_seed),
-                                         , trainable = trainable)
+                weight = tf.get_variable(name='conv_kernel_%d' % index, shape=w_shape,                                       initializer=tf.glorot_uniform_initializer(seed = rand_seed),                       trainable = trainable)
                 self.weight = weight
 
             with tf.variable_scope('conv_bias'):
