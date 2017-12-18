@@ -9,9 +9,12 @@ import subprocess
 
 
 def get_Imagenet_keys():
+    '''
+    This maps my tensor names onto the names used by the downloaded ImageNe weights.
+    '''
 
     my_weights = dict()
-    
+
     #BLOCK
     my_weights['conv_layer_0/conv_kernel_0']= 'conv1_1_W'
     my_weights['conv_layer_0/conv_bias/conv_bias_0']= 'conv1_1_b'
